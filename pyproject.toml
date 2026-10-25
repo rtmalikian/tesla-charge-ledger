@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tesla-charge-ledger"
+version = "0.1.0"
+description = "Free Tesla charging-cost ledger with real time-of-use rates: monthly and per-car cost reports, home vs Supercharger split, CSV export, and an OpenAI-compatible Q&A API — with a pluggable LLM backend and full offline rules engine"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Raphael Malikian", email = "rtmalikian@gmail.com" }]
+keywords = ["tesla", "fleet-api", "openai-compatible", "llm", "ai", "chat", "ollama", "charging-cost", "time-of-use", "supercharger", "ev", "model-3", "model-y"]
+dependencies = [
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Home Automation",
+    "Topic :: Utilities",
+]
+
+[project.scripts]
+tcledger = "tesla_charge_ledger.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/rtmalikian/tesla-charge-ledger"
+Issues = "https://github.com/rtmalikian/tesla-charge-ledger/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

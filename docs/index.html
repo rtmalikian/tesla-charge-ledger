@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tesla Charge Ledger — Live Demo (POC)</title>
+<meta name="description" content="Free Tesla charging-cost ledger with real time-of-use rates. Interactive proof-of-concept demo of tesla-charge-ledger: price a session, see a demo month.">
+<style>
+  :root { --bg:#0b0e13; --panel:#141922; --line:#232c3a; --text:#e8edf4; --muted:#93a1b5; --red:#e82127; --green:#37d67a; --amber:#f5b544; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--text); }
+  .wrap { max-width:860px; margin:0 auto; padding:24px 16px 64px; }
+  header { text-align:center; padding:28px 0 8px; }
+  h1 { font-size:2rem; margin:0 0 8px; }
+  h1 .red { color:var(--red); }
+  .sub { color:var(--muted); max-width:640px; margin:0 auto; line-height:1.55; }
+  .badge { display:inline-block; margin-top:14px; padding:4px 12px; border:1px solid var(--line); border-radius:999px; color:var(--muted); font-size:.82rem; }
+  .badge b { color:var(--amber); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-top:18px; }
+  .panel h2 { margin:0 0 10px; font-size:1.1rem; }
+  .rules { display:flex; gap:12px; flex-wrap:wrap; color:var(--muted); font-size:.92rem; }
+  .rules label { display:flex; flex-direction:column; gap:4px; }
+  .rules input, .rules select { background:#0d1117; border:1px solid var(--line); border-radius:8px; color:var(--text); padding:7px 9px; font-size:.95rem; }
+  button { border:1px solid var(--line); background:#0d1117; color:var(--text); border-radius:999px; padding:8px 14px; cursor:pointer; font-size:.9rem; margin-top:12px; }
+  button:hover { border-color:var(--red); }
+  button.primary { background:var(--red); border-color:var(--red); color:#fff; }
+  .result { font-size:1.25rem; margin-top:14px; }
+  .result .cost { color:var(--green); font-weight:700; }
+  .breakdown { color:var(--muted); font-size:.92rem; margin-top:6px; line-height:1.6; }
+  table { width:100%; border-collapse:collapse; font-size:.92rem; margin-top:10px; }
+  th { text-align:left; color:var(--muted); font-weight:600; border-bottom:1px solid var(--line); padding:6px 4px; }
+  td { padding:6px 4px; border-bottom:1px solid #1b2330; }
+  td.num, th.num { text-align:right; }
+  tr.total td { font-weight:700; border-top:1px solid var(--line); }
+  .note { color:var(--muted); font-size:.85rem; line-height:1.55; margin-top:14px; }
+  a { color:var(--green); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Tesla <span class="red">Charge Ledger</span></h1>
+    <p class="sub">What did charging actually cost? Price a session with real time-of-use
+    rates — the same minute-by-minute math the app runs — and see a demo month.
+    No install, no car, no account.</p>
+    <span class="badge"><b>DEMO DATA</b> — pretend car, pretend sessions. This page never connects to a real Tesla.</span>
+  </header>
+
+  <div class="panel">
+    <h2>Price a charging session</h2>
+    <div class="rules">
+      <label>Energy (kWh)<input id="kwh" type="number" value="40" min="1" max="200"></label>
+      <label>Starts at<select id="startHour">
+        <option value="0">12:00 AM</option><option value="1">1:00 AM</option><option value="2">2:00 AM</option>
+        <option value="3">3:00 AM</option><option value="4">4:00 AM</option><option value="5">5:00 AM</option>
+        <option value="6">6:00 AM</option><option value="7">7:00 AM</option><option value="8">8:00 AM</option>
+        <option value="9">9:00 AM</option><option value="10">10:00 AM</option><option value="11">11:00 AM</option>
+        <option value="12">12:00 PM</option><option value="13">1:00 PM</option><option value="14">2:00 PM</option>
+        <option value="15">3:00 PM</option><option value="16">4:00 PM</option><option value="17" selected>5:00 PM</option>
+        <option value="18">6:00 PM</option><option value="19">7:00 PM</option><option value="20">8:00 PM</option>
+        <option value="21">9:00 PM</option><option value="22">10:00 PM</option><option value="23">11:00 PM</option>
+      </select></label>
+      <label>Duration (hours)<input id="hours" type="number" value="3" min="0.5" max="24" step="0.5"></label>
+      <label>Where<select id="loc">
+        <option value="home">Home (time-of-use rates)</option>
+        <option value="supercharger">Supercharger (flat)</option>
+        <option value="public">Other public charger (flat)</option>
+      </select></label>
+      <label>Off-peak $/kWh<input id="offRate" type="number" value="0.28" min="0" step="0.01"></label>
+      <label>Peak $/kWh (4–9 PM)<input id="peakRate" type="number" value="0.55" min="0" step="0.01"></label>
+      <label>Supercharger $/kWh<input id="scRate" type="number" value="0.45" min="0" step="0.01"></label>
+      <label>Public $/kWh<input id="pubRate" type="number" value="0.40" min="0" step="0.01"></label>
+    </div>
+    <button class="primary" onclick="priceIt()">Price this session</button>
+    <div class="result" id="result"></div>
+    <div class="breakdown" id="breakdown"></div>
+    <p class="note">Home sessions are priced minute by minute, exactly like the app:
+    energy spread evenly across the session, each minute at the rate in force then.
+    A session that runs into the 4–9 PM peak costs more than the same energy drawn overnight.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Demo month — September 2026 (pretend Model Y)</h2>
+    <table>
+      <thead><tr><th>Session</th><th>Where</th><th class="num">kWh</th><th class="num">Cost</th></tr></thead>
+      <tbody id="monthBody"></tbody>
+    </table>
+    <p class="note">September total and split are computed live by the same pricing code above.
+    Notice Sep 7: 30 kWh for $14.47 — more per kWh than Sep 3's overnight 45 kWh for $12.60 —
+    because three of its four hours fell in the peak window.</p>
+    <p class="note">Get the real app: <a href="https://github.com/rtmalikian/tesla-charge-ledger">github.com/rtmalikian/tesla-charge-ledger</a>
+    — free, open source, MIT. <code>tcledger setup</code> asks plain-language questions and writes your config; no developer skills needed.</p>
+  </div>
+</div>
+<script>
+  // Mirror of the app's ledger.price_session: uniform energy spread, minute by minute.
+  function priceSession(kwh, startHour, hours, loc, rates) {
+    if (loc === 'supercharger') return { cost: kwh * rates.sc, parts: [['supercharger', kwh, kwh * rates.sc]] };
+    if (loc === 'public') return { cost: kwh * rates.pub, parts: [['public', kwh, kwh * rates.pub]] };
+    const minutes = Math.max(1, Math.round(hours * 60));
+    const perMin = kwh / minutes;
+    const parts = {};
+    let total = 0;
+    for (let i = 0; i < minutes; i++) {
+      const m = (startHour * 60 + i) % 1440;
+      const peak = m >= 16 * 60 && m < 21 * 60;
+      const rate = peak ? rates.peak : rates.off;
+      const name = peak ? 'peak' : 'off-peak';
+      total += perMin * rate;
+      if (!parts[name]) parts[name] = [0, 0];
+      parts[name][0] += perMin; parts[name][1] += perMin * rate;
+    }
+    return { cost: total, parts: Object.entries(parts).map(([k, v]) => [k, v[0], v[1]]) };
+  }
+  function fmt(n) { return '$' + n.toFixed(2); }
+  function rates() {
+    return { off: +document.getElementById('offRate').value,
+             peak: +document.getElementById('peakRate').value,
+             sc: +document.getElementById('scRate').value,
+             pub: +document.getElementById('pubRate').value };
+  }
+  function priceIt() {
+    const kwh = +document.getElementById('kwh').value;
+    const start = +document.getElementById('startHour').value;
+    const hours = +document.getElementById('hours').value;
+    const loc = document.getElementById('loc').value;
+    const r = priceSession(kwh, start, hours, loc, rates());
+    document.getElementById('result').innerHTML =
+      'That session would cost <span class="cost">' + fmt(r.cost) + '</span>';
+    document.getElementById('breakdown').innerHTML = r.parts.map(
+      p => p[0] + ': ' + p[1].toFixed(1) + ' kWh → ' + fmt(p[2])).join('<br>');
+  }
+  // Demo month: same sessions as `tcledger simulate` (Sep 2026).
+  const demo = [
+    ['Thu Sep 03, 11:00 PM', 'Home', 45, 'home', 23, 7],
+    ['Mon Sep 07, 03:00 PM', 'Home', 30, 'home', 15, 4],
+    ['Sat Sep 12, 11:30 AM', 'Tejon Ranch Supercharger', 55, 'supercharger', 11.5, 0.75],
+    ['Fri Sep 18, 01:00 AM', 'Home', 40, 'home', 1, 4],
+    ['Tue Sep 22, 10:00 AM', 'Target parking charger', 25, 'public', 10, 1],
+    ['Sun Sep 27, 05:00 PM', 'Home', 20, 'home', 17, 3],
+    ['Wed Sep 30, 10:00 PM', 'Home', 35, 'home', 22, 4],
+  ];
+  (function renderMonth() {
+    const r = rates();
+    let tk = 0, tc = 0;
+    const rows = demo.map(d => {
+      const p = priceSession(d[2], d[4], d[5], d[3], r);
+      tk += d[2]; tc += p.cost;
+      return '<tr><td>' + d[0] + '</td><td>' + d[1] + '</td><td class="num">' +
+        d[2].toFixed(0) + '</td><td class="num">' + fmt(p.cost) + '</td></tr>';
+    }).join('');
+    document.getElementById('monthBody').innerHTML = rows +
+      '<tr class="total"><td>September 2026 total</td><td>7 sessions</td>' +
+      '<td class="num">' + tk.toFixed(0) + '</td><td class="num">' + fmt(tc) + '</td></tr>';
+  })();
+  priceIt();
+</script>
+</body>
+</html>
